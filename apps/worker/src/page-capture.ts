@@ -34,6 +34,7 @@ export async function captureInitialPage(auditRunId: string, inputUrl: string) {
   return {
     normalizedUrl,
     htmlArtifactId: htmlArtifact.id,
+    html: result.html,
     pageCapture,
   };
 }
