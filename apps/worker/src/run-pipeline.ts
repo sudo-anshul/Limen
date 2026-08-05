@@ -1,18 +1,10 @@
 import { prisma } from '@limen/db';
-import type { AuditRunStatus } from '@limen/shared/constants/run-status';
 
-const processingStatuses: AuditRunStatus[] = [
-  'validating',
-  'capturing',
-  'extracting',
-  'analyzing',
-  'generating_verdict',
-  'publishing',
-];
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import { updateRunStatus } from './db';
+import { persistBasicSignals } from './extract';
+import { createInitialFinding } from './findings';
+import { captureInitialPage } from './page-capture';
+import { finalizeInitialVerdict } from './verdict';
 
 export async function processLaunchRun(runId: string) {
   const run = await prisma.auditRun.findUnique({
@@ -21,6 +13,7 @@ export async function processLaunchRun(runId: string) {
     },
     select: {
       id: true,
+      url: true,
     },
   });
 
@@ -28,28 +21,44 @@ export async function processLaunchRun(runId: string) {
     throw new Error(`Audit run ${runId} not found.`);
   }
 
-  for (const status of processingStatuses) {
-    await prisma.auditRun.update({
-      where: {
-        id: runId,
-      },
-      data: {
-        status,
-      },
-    });
+  await updateRunStatus(runId, 'validating');
 
-    await sleep(500);
-  }
+  const capture = await captureInitialPage(runId, run.url);
+
+  await updateRunStatus(runId, 'capturing');
 
   await prisma.auditRun.update({
     where: {
       id: runId,
     },
     data: {
-      status: 'completed',
-      verdict: 'caveat',
-      confidence: 'low',
-      completedAt: new Date(),
+      status: 'capturing',
+      url: capture.normalizedUrl,
     },
   });
+
+  await updateRunStatus(runId, 'extracting');
+
+  await persistBasicSignals({
+    auditRunId: runId,
+    pageCaptureId: capture.pageCapture.id,
+    url: capture.pageCapture.finalUrl,
+    title: capture.pageCapture.title,
+  });
+
+  await updateRunStatus(runId, 'analyzing');
+
+  await createInitialFinding({
+    auditRunId: runId,
+    pageCaptureId: capture.pageCapture.id,
+    title: 'Initial evidence pass completed',
+    summary:
+      'Limen has captured the page HTML, resolved the final URL, and stored the first evidence snapshot.',
+    recommendation:
+      'Continue the pipeline with screenshot capture, richer extraction, and audience-specific analysis.',
+  });
+
+  await updateRunStatus(runId, 'generating_verdict');
+  await updateRunStatus(runId, 'publishing');
+  await finalizeInitialVerdict(runId);
 }
