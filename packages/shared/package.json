@@ -1,0 +1,26 @@
+{
+  "name": "@limen/shared",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./schemas/launch-brief": "./src/schemas/launch-brief.ts",
+    "./schemas/finding": "./src/schemas/finding.ts",
+    "./schemas/persona-replay": "./src/schemas/persona-replay.ts",
+    "./schemas/rewrite-suggestion": "./src/schemas/rewrite-suggestion.ts",
+    "./schemas/launch-board": "./src/schemas/launch-board.ts",
+    "./constants/run-status": "./src/constants/run-status.ts",
+    "./constants/verdict": "./src/constants/verdict.ts"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo 'lint not configured yet'"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2"
+  }
+}

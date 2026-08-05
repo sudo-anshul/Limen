@@ -1,0 +1,23 @@
+node_modules
+.pnpm-store
+.next
+out
+dist
+build
+coverage
+.env
+.env.*
+!.env.example
+playwright-report
+test-results
+*.log
+apps/web/.next
+packages/db/generated
+
+# local planning and research files
+/docs
+/tasks
+/notes
+/research
+/decisions
+MEMORY.md

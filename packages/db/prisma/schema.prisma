@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AuditRun {
+  id              String              @id @default(cuid())
+  url             String
+  audience        String
+  trafficChannel  String
+  desiredAction   String
+  offer           String
+  objectionsJson  Json
+  competitorsJson Json?
+  brandVoice      String
+  status          String
+  verdict         String?
+  confidence      String?
+  createdAt       DateTime            @default(now())
+  completedAt     DateTime?
+  pageCaptures    PageCapture[]
+  findings        Finding[]
+  personaReplays  PersonaReplay[]
+  rewrites        RewriteSuggestion[]
+  analyzers       AnalyzerExecution[]
+}
+
+model PageCapture {
+  id                   String            @id @default(cuid())
+  auditRunId           String
+  auditRun             AuditRun          @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  finalUrl             String
+  title                String?
+  screenshotArtifactId String?
+  htmlArtifactId       String?
+  viewport             String?
+  statusCode           Int?
+  redirectChainJson    Json?
+  captureConfigVersion String?
+  extractedSignals     ExtractedSignal[]
+}
+
+model Artifact {
+  id           String   @id @default(cuid())
+  auditRunId   String
+  kind         String
+  storagePath  String
+  sha256       String?
+  metadataJson Json?
+  createdAt    DateTime @default(now())
+}
+
+model ExtractedSignal {
+  id             String      @id @default(cuid())
+  auditRunId     String
+  pageCaptureId  String
+  pageCapture    PageCapture @relation(fields: [pageCaptureId], references: [id], onDelete: Cascade)
+  type           String
+  key            String
+  valueJson      Json
+  evidenceRefJson Json?
+}
+
+model Finding {
+  id               String   @id @default(cuid())
+  auditRunId       String
+  auditRun         AuditRun @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  category         String
+  title            String
+  severity         String
+  confidence       String
+  summary          String
+  whyItMatters     String
+  likelyReaction   String
+  recommendation   String
+  evidenceRefsJson Json
+  priorityRank     Int
+}
+
+model PersonaReplay {
+  id                 String   @id @default(cuid())
+  auditRunId         String
+  auditRun           AuditRun @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  personaName        String
+  mindset            String
+  firstImpression    String
+  confusionPoint     String
+  trustHesitation    String
+  dropoffReason      String
+  resolutionSuggestion String
+}
+
+model RewriteSuggestion {
+  id              String   @id @default(cuid())
+  auditRunId      String
+  auditRun        AuditRun @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  fieldType       String
+  originalText    String
+  suggestion      String
+  rationale       String
+  audienceFitNote String
+}
+
+model AnalyzerExecution {
+  id          String   @id @default(cuid())
+  auditRunId  String
+  auditRun    AuditRun @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  analyzerName String
+  version     String
+  inputRefJson Json?
+  outputJson  Json?
+  durationMs  Int?
+  status      String
+  createdAt   DateTime @default(now())
+}
