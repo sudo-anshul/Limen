@@ -9,8 +9,10 @@
     "./schemas/persona-replay": "./src/schemas/persona-replay.ts",
     "./schemas/rewrite-suggestion": "./src/schemas/rewrite-suggestion.ts",
     "./schemas/launch-board": "./src/schemas/launch-board.ts",
+    "./schemas/launch-run-job": "./src/schemas/launch-run-job.ts",
     "./constants/run-status": "./src/constants/run-status.ts",
-    "./constants/verdict": "./src/constants/verdict.ts"
+    "./constants/verdict": "./src/constants/verdict.ts",
+    "./constants/queue": "./src/constants/queue.ts"
   },
   "dependencies": {
     "zod": "^3.23.8"

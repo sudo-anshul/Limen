@@ -2,6 +2,8 @@ import { prisma } from '@limen/db';
 import { launchBriefSchema } from '@limen/shared/schemas/launch-brief';
 import { NextResponse } from 'next/server';
 
+import { getLaunchRunQueue } from '@/server/queue';
+
 export async function POST(request: Request) {
   const json = await request.json().catch(() => null);
   const parsed = launchBriefSchema.safeParse(json);
@@ -34,6 +36,16 @@ export async function POST(request: Request) {
         status: true,
       },
     });
+
+    await getLaunchRunQueue().add(
+      'process-launch-run',
+      {
+        runId: run.id,
+      },
+      {
+        jobId: run.id,
+      },
+    );
 
     return NextResponse.json({
       runId: run.id,

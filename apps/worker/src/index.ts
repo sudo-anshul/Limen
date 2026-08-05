@@ -1,8 +1,12 @@
-import { launchBriefSchema } from '@limen/shared/schemas/launch-brief';
+import { createQueueWorker } from './queue-worker';
 
-function main() {
+async function main() {
   console.log('Limen worker booting...');
-  console.log('Launch brief schema loaded:', launchBriefSchema.shape.url.description ?? 'ready');
+  createQueueWorker();
+  console.log('Launch run worker is listening for jobs.');
 }
 
-main();
+main().catch((error) => {
+  console.error('Worker failed to start', error);
+  process.exit(1);
+});
