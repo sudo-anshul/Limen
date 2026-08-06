@@ -1,50 +1,43 @@
-# Limen
-
 <div align="center">
 
-## **Preflight for web launches**
+# Limen
 
-Limen is a launch assurance product for landing pages.
-It helps teams decide whether a page is actually ready for launch-day or paid traffic — before weak messaging, low trust, or poor CTA clarity waste the moment.
+### **Preflight for web launches**
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![Postgres](https://img.shields.io/badge/Postgres-Database-336791?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
-[![Redis](https://img.shields.io/badge/Redis-Queue-red?style=for-the-badge&logo=redis)](https://redis.io/)
-[![Playwright](https://img.shields.io/badge/Playwright-Rendered%20Evidence-2EAD33?style=for-the-badge&logo=playwright)](https://playwright.dev/)
+Limen helps teams decide whether a landing page is actually ready for launch-day or paid traffic — before weak messaging, low trust, or poor CTA clarity waste the moment.
 
-**Core question:**
+<p>
+  <a href="#quickstart">Quickstart</a> ·
+  <a href="#what-limen-does">What it does</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#current-capabilities">Capabilities</a> ·
+  <a href="#local-development">Local development</a>
+</p>
 
-> **Should this page launch for this audience and this traffic source right now?**
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Postgres](https://img.shields.io/badge/Postgres-Database-336791?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-Queue-red?style=flat-square&logo=redis)](https://redis.io/)
+[![Playwright](https://img.shields.io/badge/Playwright-Rendered%20Evidence-2EAD33?style=flat-square&logo=playwright)](https://playwright.dev/)
+[![Status](https://img.shields.io/badge/Status-Active%20Build-7c3aed?style=flat-square)](#current-capabilities)
 
 </div>
 
 ---
 
-## Table of contents
+## The idea in one line
 
-- [Why Limen exists](#why-limen-exists)
-- [What Limen does](#what-limen-does)
-- [How the product works](#how-the-product-works)
-- [Current feature set](#current-feature-set)
-- [Architecture](#architecture)
-- [Tech stack](#tech-stack)
-- [Database model overview](#database-model-overview)
-- [Local development](#local-development)
-- [Useful commands](#useful-commands)
-- [Current project status](#current-project-status)
-- [Design principles](#design-principles)
-- [Roadmap direction](#roadmap-direction)
-- [Repo structure](#repo-structure)
-- [Vision](#vision)
+> **Should this page launch for this audience and this traffic source right now?**
+
+That is the entire reason Limen exists.
 
 ---
 
 ## Why Limen exists
 
-A landing page can **look** polished and still fail the moment real traffic hits it.
+A landing page can **look polished** and still fail the moment real traffic hits it.
 
-Teams often launch pages with hidden weaknesses:
+Typical launch mistakes are simple, expensive, and easy to miss:
 - the headline is too vague for cold traffic
 - the CTA asks for commitment too early
 - trust proof appears too late
@@ -53,11 +46,7 @@ Teams often launch pages with hidden weaknesses:
 
 Most tools catch isolated issues.
 
-**Limen is built to answer a harder question:**
-
-> **Is this page ready to launch for the audience and traffic you are about to send?**
-
-That is the product.
+**Limen is built to make a launch decision.**
 
 ---
 
@@ -65,7 +54,7 @@ That is the product.
 
 Limen takes a **launch brief** and a **public landing page URL**, then produces a launch-oriented review based on captured evidence.
 
-### Launch brief inputs
+### Launch brief
 - target audience
 - traffic channel
 - desired action
@@ -74,7 +63,7 @@ Limen takes a **launch brief** and a **public landing page URL**, then produces 
 - competitors
 - brand voice
 
-### Evidence Limen captures
+### Evidence captured
 - HTML snapshot
 - rendered screenshot via Playwright
 - page title and metadata
@@ -83,7 +72,7 @@ Limen takes a **launch brief** and a **public landing page URL**, then produces 
 - trust-related signals
 - viewport and page capture metadata
 
-### Product outputs
+### Outputs
 - launch verdict
 - confidence level
 - launch summary
@@ -92,12 +81,12 @@ Limen takes a **launch brief** and a **public landing page URL**, then produces 
 - evidence-linked findings
 - persona replay
 - rewrite suggestions
-- extracted signals view
+- extracted signals explorer
 - screenshot and HTML artifact previews
 
 ---
 
-## How the product works
+## How it works
 
 ```mermaid
 flowchart TD
@@ -117,94 +106,74 @@ flowchart TD
     N --> O[Render run results UI]
 ```
 
-### In one sentence
-Limen converts a URL and launch brief into a structured launch decision backed by persisted evidence.
+### Product rhythm
+
+```text
+Brief → Evidence → Findings → Verdict → Persona view → Rewrites
+```
+
+Limen is intentionally built as a **decision pipeline**, not a generic scanner.
 
 ---
 
-## Current feature set
+## What the report feels like
 
-### 1. Launch brief intake
-The web app captures context before analysis begins.
+### Launch board
+- **Verdict** — should this page launch?
+- **Confidence** — how strong is the current evidence?
+- **Top reasons** — why Limen reached the verdict
+- **Top fixes** — what to change first
 
-This is critical because Limen is meant to judge readiness in context, not in isolation.
+### Evidence layer
+- HTML snapshot
+- rendered screenshot
+- extracted signals
+- evidence-linked findings
 
-### 2. Evidence capture pipeline
-The worker currently performs:
-- URL normalization
-- public URL validation
-- HTML fetch
-- rendered screenshot capture
-- artifact persistence
-- page capture persistence
-
-### 3. Extracted signal model
-Limen stores structured signals such as:
-- title
-- meta description
-- hero H1
-- headings
-- CTA candidates
-- trust signals
-- hero density
-- visual evidence markers
-
-### 4. Heuristic finding generation
-The current rule layer can identify issues like:
-- missing H1
-- missing meta description
-- no clear CTA
-- no obvious trust signals
-- dense hero copy
-- CTA potentially outpacing trust
-
-### 5. Launch board synthesis
-Limen currently synthesizes:
-- summary
-- top reasons
-- top fixes
-
-### 6. Persona replay
-Limen can simulate how two visitors may perceive the page:
-- primary target visitor
-- skeptical cold visitor
-
-### 7. Rewrite suggestions
-The system generates structured copy guidance for:
-- hero headline
-- hero subhead
-- primary CTA
-- trust section
-
-### 8. Results UI
-The current UI includes:
-- launch verdict card
-- summary and metrics
-- findings with evidence refs
-- artifact preview
-- evidence summary
-- extracted signals explorer
+### Operator layer
 - persona replay
 - rewrite suggestions
 
 ---
 
-## Product experience
+## Current capabilities
+
+| Area | Current state | Notes |
+|---|---|---|
+| Launch brief intake | ✅ Working | Audience, channel, offer, objections, and more |
+| Queue-backed execution | ✅ Working | BullMQ + Redis |
+| HTML fetch | ✅ Working | URL normalization + fetch pipeline |
+| Screenshot capture | ✅ Working | Playwright rendered evidence |
+| Artifact persistence | ✅ Working | HTML + screenshot artifacts |
+| Extracted signals | ✅ Working | H1, metadata, CTA candidates, trust signals, hero density |
+| Findings generation | ✅ Working | Rule-based heuristics with evidence refs |
+| Verdict generation | ✅ Working | Current verdict logic is rule-based and evolving |
+| Launch summary | ✅ Working | Summary, top reasons, top fixes |
+| Persona replay | ✅ Working | Primary + skeptical cold visitor |
+| Rewrite suggestions | ✅ Working | Hero, support line, CTA, trust section |
+| Artifact previews | ✅ Working | Screenshot + HTML snapshot in UI |
+| Extracted signals UI | ✅ Working | Transparent evidence explorer |
+| Ranking quality | 🚧 Improving | Needs better launch-readiness weighting |
+| Telemetry vs findings separation | 🚧 Improving | Some internal pipeline events still need cleanup |
+| Screenshot-aware reasoning depth | 🚧 Improving | Evidence exists; deeper interpretation still evolving |
+
+---
+
+## Screens
 
 ### Landing page
-Introduces Limen as a launch-decision product.
+Limen is presented as a launch-decision product, not just a diagnostics dashboard.
 
 ### New run page
-Creates a run from a launch brief.
+Collects the launch brief before the analysis starts.
 
 ### Run page
 Shows:
-- run health
-- pipeline progress
 - launch board summary
 - verdict
-- findings
-- evidence artifacts
+- pipeline progress
+- top findings
+- screenshot + HTML evidence
 - persona replay
 - rewrite suggestions
 - extracted signals
@@ -212,8 +181,6 @@ Shows:
 ---
 
 ## Architecture
-
-### High-level design
 
 ```text
 apps/
@@ -225,28 +192,23 @@ packages/
   ui/         -> shared UI package placeholder
 ```
 
-### Main subsystems
+### System roles
 
 #### Web app
-Responsible for:
-- user interface
 - launch brief intake
 - run creation
 - run detail rendering
 - artifact serving
 
 #### Worker
-Responsible for:
 - consuming queued runs
 - fetching page data
 - rendering screenshots
 - extracting signals
 - creating findings
-- generating summaries and persona outputs
-- generating rewrite suggestions
+- generating summaries, persona outputs, and rewrites
 
 #### Database
-Stores:
 - audit runs
 - page captures
 - artifacts
@@ -257,7 +219,7 @@ Stores:
 - analyzer outputs
 
 #### Redis / queue
-Used for background run execution.
+- background execution for launch runs
 
 ---
 
@@ -284,36 +246,19 @@ Used for background run execution.
 
 ---
 
-## Database model overview
-
-### Key entities
-- `AuditRun`
-- `PageCapture`
-- `Artifact`
-- `ExtractedSignal`
-- `Finding`
-- `PersonaReplay`
-- `RewriteSuggestion`
-- `AnalyzerExecution`
-
-### Why this matters
-Limen is intentionally built around persisted evidence and structured outputs, so the product can evolve from a prototype into a more trustworthy launch-review system.
-
----
-
-## Local development
+## Quickstart
 
 ### Prerequisites
 - Node.js 20+
 - pnpm
 - Docker
 
-### 1. Install dependencies
+### 1) Install dependencies
 ```bash
 pnpm install
 ```
 
-### 2. Start Postgres
+### 2) Start Postgres
 ```bash
 docker run --name limen-postgres \
   -e POSTGRES_USER=postgres \
@@ -328,7 +273,7 @@ If already created:
 docker start limen-postgres
 ```
 
-### 3. Start Redis
+### 3) Start Redis
 ```bash
 docker run --name limen-redis -p 6379:6379 -d redis:7
 ```
@@ -338,36 +283,35 @@ If already created:
 docker start limen-redis
 ```
 
-### 4. Create local env
+### 4) Create local env
 ```bash
 cp .env.example .env
 ```
 
-`.env`
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/limen"
 REDIS_URL="redis://localhost:6379"
 ```
 
-### 5. Run Prisma migrations
+### 5) Run Prisma migrations
 ```bash
 DATABASE_URL='postgresql://postgres:postgres@localhost:5432/limen' \
   pnpm --filter @limen/db prisma:migrate --name init
 ```
 
-### 6. Install Playwright browser
+### 6) Install Playwright browser
 ```bash
 pnpm --filter worker exec playwright install chromium
 ```
 
-### 7. Start the web app
+### 7) Start the web app
 ```bash
 DATABASE_URL='postgresql://postgres:postgres@localhost:5432/limen' \
 REDIS_URL='redis://localhost:6379' \
 pnpm --filter web dev
 ```
 
-### 8. Start the worker
+### 8) Start the worker
 In another terminal:
 ```bash
 DATABASE_URL='postgresql://postgres:postgres@localhost:5432/limen' \
@@ -433,10 +377,10 @@ DATABASE_URL='postgresql://postgres:postgres@localhost:5432/limen' \
 
 ---
 
-## Example product flow
+## Example flow
 
 ### Step 1
-Open Limen and create a launch run.
+Create a launch run.
 
 ### Step 2
 Enter:
@@ -472,8 +416,6 @@ Review:
 ---
 
 ## Design principles
-
-Limen is being built around these ideas:
 
 ### Evidence before confidence
 Findings should be backed by captured artifacts and structured signals.
@@ -519,7 +461,6 @@ packages/
   ui/
 ```
 
-### Notes
 This repository intentionally focuses on the **product code**. Internal planning, local research, and non-essential local files are excluded from GitHub.
 
 ---
@@ -541,19 +482,6 @@ That means Limen should eventually become:
 
 ---
 
-## Contributing
-
-This project is under active development.
-
-If you explore or extend it, the most valuable contributions are usually around:
-- better extraction quality
-- better launch-readiness heuristics
-- more grounded summaries
-- UI clarity
-- developer experience
-
----
-
 ## Final note
 
 Limen already runs a real end-to-end launch review pipeline.
@@ -562,7 +490,5 @@ The next stage is making that intelligence:
 - sharper
 - more trusted
 - more product-ready
-
-If you’re reading this from the repository, you’re looking at a product being built around a simple but powerful question:
 
 > **Don’t ask whether the page exists. Ask whether it’s ready.**
