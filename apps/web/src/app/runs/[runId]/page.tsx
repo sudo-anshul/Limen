@@ -1,7 +1,10 @@
 import { prisma } from '@limen/db';
 import { notFound } from 'next/navigation';
 
-import { loadingSteps, runStatusLabels } from '@/lib/run-status';
+import { PipelineStatus } from '@/components/pipeline-status';
+import { RunResults } from '@/components/run-results';
+import { runStatusLabels } from '@/lib/run-status';
+import { formatChannel, verdictTone } from '@/lib/run-view';
 
 type RunPageProps = {
   params: Promise<{
@@ -16,17 +19,22 @@ export default async function RunPage({ params }: RunPageProps) {
     where: {
       id: runId,
     },
-    select: {
-      id: true,
-      url: true,
-      audience: true,
-      trafficChannel: true,
-      desiredAction: true,
-      offer: true,
-      status: true,
-      verdict: true,
-      confidence: true,
-      createdAt: true,
+    include: {
+      pageCaptures: {
+        orderBy: {
+          id: 'asc',
+        },
+      },
+      findings: {
+        orderBy: {
+          priorityRank: 'asc',
+        },
+      },
+      extractedSignals: {
+        orderBy: {
+          id: 'asc',
+        },
+      },
     },
   });
 
@@ -34,9 +42,11 @@ export default async function RunPage({ params }: RunPageProps) {
     notFound();
   }
 
+  const hasResults = run.findings.length > 0 || run.pageCaptures.length > 0 || run.verdict;
+
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-16 text-white sm:px-10 lg:px-12">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-10">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-10">
         <div className="space-y-4">
           <p className="text-sm font-medium uppercase tracking-[0.22em] text-zinc-400">
             Launch run
@@ -45,12 +55,13 @@ export default async function RunPage({ params }: RunPageProps) {
             <div className="space-y-3">
               <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Run {run.id}</h1>
               <p className="max-w-3xl text-lg leading-8 text-zinc-300">
-                Limen has stored this launch brief and is ready for the worker pipeline to take it
-                from queued to verdict.
+                Limen now renders this page from real stored evidence, findings, and verdict state.
               </p>
             </div>
-            <div className="inline-flex w-fit items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-200">
-              {runStatusLabels[run.status] ?? run.status}
+            <div
+              className={`inline-flex w-fit items-center rounded-full border px-4 py-2 text-sm font-medium ${verdictTone(run.verdict)}`}
+            >
+              {run.verdict ? `${run.verdict} verdict` : runStatusLabels[run.status] ?? run.status}
             </div>
           </div>
         </div>
@@ -81,36 +92,23 @@ export default async function RunPage({ params }: RunPageProps) {
               <StatusRow label="Current status" value={runStatusLabels[run.status] ?? run.status} />
               <StatusRow label="Verdict" value={run.verdict ?? 'Not generated yet'} />
               <StatusRow label="Confidence" value={run.confidence ?? 'Pending'} />
+              <StatusRow label="Findings" value={String(run.findings.length)} />
             </div>
           </section>
         </div>
 
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-white">Pipeline status</h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-400">
-              The persistence layer is now wired. Next we will connect worker state transitions and
-              real pipeline progress.
-            </p>
-          </div>
+        <PipelineStatus status={run.status} />
 
-          <div className="flex flex-col gap-4">
-            {loadingSteps.map((step, index) => (
-              <div
-                key={step}
-                className="flex items-center justify-between rounded-2xl border border-white/10 bg-zinc-950/60 px-4 py-4"
-              >
-                <div>
-                  <p className="text-sm text-zinc-400">Step 0{index + 1}</p>
-                  <p className="mt-1 text-base font-medium text-white">{step}</p>
-                </div>
-                <span className="rounded-full border border-white/10 px-3 py-1 text-sm text-zinc-300">
-                  Pending
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
+        {hasResults ? (
+          <RunResults run={run} />
+        ) : (
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
+            <h2 className="text-xl font-semibold text-white">Waiting for first results</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-300">
+              Once the worker stores evidence and findings, the first Launch Board will appear here.
+            </p>
+          </section>
+        )}
       </div>
     </main>
   );
@@ -140,11 +138,4 @@ function StatusRow({ label, value }: { label: string; value: string }) {
       <span className="text-sm font-medium text-white">{value}</span>
     </div>
   );
-}
-
-function formatChannel(channel: string) {
-  return channel
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
 }

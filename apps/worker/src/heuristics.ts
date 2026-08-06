@@ -8,6 +8,9 @@ type HeuristicInput = {
   h1: string | null;
   ctas: string[];
   trustSignals: string[];
+  heroText: string | null;
+  heroWordCount: number;
+  viewport: string | null;
 };
 
 export async function createHeuristicFindings(input: HeuristicInput) {
@@ -74,6 +77,32 @@ export async function createHeuristicFindings(input: HeuristicInput) {
     });
   }
 
+  if (input.heroWordCount > 90) {
+    findings.push({
+      category: 'message_alignment',
+      title: 'Hero section may be too dense',
+      severity: 'medium',
+      confidence: 'medium',
+      summary: 'The extracted hero content is long enough that cold visitors may struggle to find the main message quickly.',
+      whyItMatters: 'Above-the-fold clarity matters most for paid traffic and fast-scanning visitors.',
+      likelyReaction: 'Visitors may skim without understanding the offer, then ignore the CTA.',
+      recommendation: 'Tighten the first screen so the core offer is obvious within one heading and one supporting line.',
+    });
+  }
+
+  if (input.ctas.length > 0 && input.trustSignals.length === 0) {
+    findings.push({
+      category: 'trust_gap',
+      title: 'CTA may appear before trust is earned',
+      severity: 'medium',
+      confidence: 'medium',
+      summary: 'Limen detected action language but little supporting proof in the first pass.',
+      whyItMatters: 'Cold traffic often needs reassurance before taking action on a new product or offer.',
+      likelyReaction: 'Visitors may see the ask but delay because the page has not yet built enough credibility.',
+      recommendation: 'Place proof close to the first CTA or strengthen the first visible trust section.',
+    });
+  }
+
   if (findings.length === 0 && input.title) {
     findings.push({
       category: 'launch_blocker',
@@ -83,7 +112,7 @@ export async function createHeuristicFindings(input: HeuristicInput) {
       summary: 'Limen found the core page structure and can now move on to richer audience-specific analysis.',
       whyItMatters: 'This confirms the page is parseable and ready for deeper screenshot- and AI-backed review.',
       likelyReaction: 'The page can proceed to a stronger evaluation layer without structural ambiguity.',
-      recommendation: 'Next, add screenshot capture and deeper content understanding to improve confidence.',
+      recommendation: 'Next, add screenshot-aware checks for hero visibility, CTA prominence, and trust placement.',
     });
   }
 
@@ -99,7 +128,7 @@ export async function createHeuristicFindings(input: HeuristicInput) {
         whyItMatters: finding.whyItMatters,
         likelyReaction: finding.likelyReaction,
         recommendation: finding.recommendation,
-        evidenceRefsJson: [{ pageCaptureId: input.pageCaptureId }],
+        evidenceRefsJson: [{ pageCaptureId: input.pageCaptureId, screenshotRegionHint: 'hero' }],
         priorityRank: index,
       })),
     });

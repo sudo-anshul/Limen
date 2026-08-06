@@ -1,6 +1,6 @@
 import { prisma } from '@limen/db';
 
-type SignalValue = string | string[];
+type SignalValue = string | number | string[];
 
 export async function persistBasicSignals({
   auditRunId,
@@ -12,6 +12,9 @@ export async function persistBasicSignals({
   headings,
   ctas,
   trustSignals,
+  heroText,
+  heroWordCount,
+  visibleSectionHints,
 }: {
   auditRunId: string;
   pageCaptureId: string;
@@ -22,6 +25,9 @@ export async function persistBasicSignals({
   headings: string[];
   ctas: string[];
   trustSignals: string[];
+  heroText: string | null;
+  heroWordCount: number;
+  visibleSectionHints: string[];
 }) {
   const signalEntries: Array<{ type: string; key: string; valueJson: SignalValue }> = [
     {
@@ -58,6 +64,21 @@ export async function persistBasicSignals({
       type: 'trust',
       key: 'signals',
       valueJson: trustSignals,
+    },
+    {
+      type: 'hero',
+      key: 'text',
+      valueJson: heroText ?? '',
+    },
+    {
+      type: 'hero',
+      key: 'word_count',
+      valueJson: heroWordCount,
+    },
+    {
+      type: 'structure',
+      key: 'visible_section_hints',
+      valueJson: visibleSectionHints,
     },
   ];
 

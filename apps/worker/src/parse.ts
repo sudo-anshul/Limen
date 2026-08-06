@@ -4,6 +4,9 @@ type ParsedPageSignals = {
   headings: string[];
   ctas: string[];
   trustSignals: string[];
+  heroText: string | null;
+  heroWordCount: number;
+  visibleSectionHints: string[];
 };
 
 function stripTags(input: string) {
@@ -26,6 +29,41 @@ function unique(values: string[]) {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
 
+function wordCount(input: string | null) {
+  if (!input) return 0;
+  return input.split(/\s+/).filter(Boolean).length;
+}
+
+function extractHeroText(html: string) {
+  const heroRegexes = [
+    /<section[^>]*class=["'][^"']*(hero|banner)[^"']*["'][^>]*>([\s\S]*?)<\/section>/i,
+    /<main[^>]*>([\s\S]*?)<\/main>/i,
+    /<body[^>]*>([\s\S]*?)<\/body>/i,
+  ];
+
+  for (const regex of heroRegexes) {
+    const match = html.match(regex);
+    const hero = match?.[2] ?? match?.[1];
+    if (hero) {
+      const cleaned = stripTags(hero).slice(0, 600);
+      if (cleaned) return cleaned;
+    }
+  }
+
+  return null;
+}
+
+function extractVisibleSectionHints(html: string) {
+  const hints = unique(
+    [
+      ...extractAllMatches(html, /<(section|div)[^>]+id=["']([^"']+)["'][^>]*>/gi),
+      ...extractAllMatches(html, /<(section|div)[^>]+class=["']([^"']+)["'][^>]*>/gi),
+    ].slice(0, 12),
+  );
+
+  return hints;
+}
+
 export function parsePageSignals(html: string): ParsedPageSignals {
   const metaDescription = extractFirstMatch(
     html,
@@ -42,7 +80,7 @@ export function parsePageSignals(html: string): ParsedPageSignals {
   const anchorTexts = extractAllMatches(html, /<a[^>]*>([\s\S]*?)<\/a>/gi);
   const ctas = unique(
     [...buttonTexts, ...anchorTexts]
-      .filter((text) => /demo|start|trial|book|talk|contact|sign up|get started|join|request/i.test(text))
+      .filter((text) => /demo|start|trial|book|talk|contact|sign up|get started|join|request|register/i.test(text))
       .slice(0, 12),
   );
 
@@ -53,11 +91,18 @@ export function parsePageSignals(html: string): ParsedPageSignals {
     ].slice(0, 12),
   );
 
+  const heroText = extractHeroText(html);
+  const heroWordCount = wordCount(heroText);
+  const visibleSectionHints = extractVisibleSectionHints(html);
+
   return {
     metaDescription,
     h1,
     headings,
     ctas,
     trustSignals,
+    heroText,
+    heroWordCount,
+    visibleSectionHints,
   };
 }

@@ -8,25 +8,26 @@ datasource db {
 }
 
 model AuditRun {
-  id              String              @id @default(cuid())
-  url             String
-  audience        String
-  trafficChannel  String
-  desiredAction   String
-  offer           String
-  objectionsJson  Json
-  competitorsJson Json?
-  brandVoice      String
-  status          String
-  verdict         String?
-  confidence      String?
-  createdAt       DateTime            @default(now())
-  completedAt     DateTime?
-  pageCaptures    PageCapture[]
-  findings        Finding[]
-  personaReplays  PersonaReplay[]
-  rewrites        RewriteSuggestion[]
-  analyzers       AnalyzerExecution[]
+  id               String              @id @default(cuid())
+  url              String
+  audience         String
+  trafficChannel   String
+  desiredAction    String
+  offer            String
+  objectionsJson   Json
+  competitorsJson  Json?
+  brandVoice       String
+  status           String
+  verdict          String?
+  confidence       String?
+  createdAt        DateTime            @default(now())
+  completedAt      DateTime?
+  pageCaptures     PageCapture[]
+  extractedSignals ExtractedSignal[]
+  findings         Finding[]
+  personaReplays   PersonaReplay[]
+  rewrites         RewriteSuggestion[]
+  analyzers        AnalyzerExecution[]
 }
 
 model PageCapture {
@@ -55,13 +56,14 @@ model Artifact {
 }
 
 model ExtractedSignal {
-  id             String      @id @default(cuid())
-  auditRunId     String
-  pageCaptureId  String
-  pageCapture    PageCapture @relation(fields: [pageCaptureId], references: [id], onDelete: Cascade)
-  type           String
-  key            String
-  valueJson      Json
+  id              String      @id @default(cuid())
+  auditRunId      String
+  auditRun        AuditRun    @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  pageCaptureId   String
+  pageCapture     PageCapture @relation(fields: [pageCaptureId], references: [id], onDelete: Cascade)
+  type            String
+  key             String
+  valueJson       Json
   evidenceRefJson Json?
 }
 

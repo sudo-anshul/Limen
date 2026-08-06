@@ -2,6 +2,7 @@ import { prisma } from '@limen/db';
 
 import { persistHtmlArtifact } from './artifacts';
 import { fetchHtml } from './html';
+import { captureRenderedEvidence } from './render';
 import { normalizeUrl } from './url';
 
 export async function captureInitialPage(auditRunId: string, inputUrl: string) {
@@ -13,27 +14,37 @@ export async function captureInitialPage(auditRunId: string, inputUrl: string) {
     sourceUrl: result.finalUrl,
   });
 
+  const renderedEvidence = await captureRenderedEvidence({
+    auditRunId,
+    url: result.finalUrl,
+  });
+
   const pageCapture = await prisma.pageCapture.create({
     data: {
       auditRunId,
-      finalUrl: result.finalUrl,
-      title: result.title,
+      finalUrl: renderedEvidence.renderedUrl,
+      title: renderedEvidence.renderedTitle ?? result.title,
+      screenshotArtifactId: renderedEvidence.screenshotArtifactId,
       htmlArtifactId: htmlArtifact.id,
+      viewport: renderedEvidence.viewport,
       statusCode: result.statusCode,
       redirectChainJson: result.redirectChain,
-      captureConfigVersion: 'v0-http-fetch',
+      captureConfigVersion: 'v1-http-and-playwright',
     },
     select: {
       id: true,
       finalUrl: true,
       title: true,
       statusCode: true,
+      screenshotArtifactId: true,
+      viewport: true,
     },
   });
 
   return {
     normalizedUrl,
     htmlArtifactId: htmlArtifact.id,
+    screenshotArtifactId: renderedEvidence.screenshotArtifactId,
     html: result.html,
     pageCapture,
   };
