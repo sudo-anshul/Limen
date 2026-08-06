@@ -29,8 +29,40 @@ export default async function RunPage({ params }: RunPageProps) {
         orderBy: {
           priorityRank: 'asc',
         },
+        select: {
+          id: true,
+          category: true,
+          title: true,
+          severity: true,
+          confidence: true,
+          summary: true,
+          whyItMatters: true,
+          recommendation: true,
+          priorityRank: true,
+          evidenceRefsJson: true,
+        },
       },
       extractedSignals: {
+        orderBy: {
+          id: 'asc',
+        },
+      },
+      analyzers: {
+        where: {
+          analyzerName: {
+            in: ['launch_board_summary', 'persona_replay', 'rewrite_suggestions'],
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      },
+      personaReplays: {
+        orderBy: {
+          id: 'asc',
+        },
+      },
+      rewrites: {
         orderBy: {
           id: 'asc',
         },

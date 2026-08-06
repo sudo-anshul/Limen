@@ -4,8 +4,11 @@ import { updateRunStatus } from './db';
 import { persistBasicSignals } from './extract';
 import { createInitialFinding } from './findings';
 import { createHeuristicFindings } from './heuristics';
+import { synthesizeLaunchBoard } from './launch-board';
 import { captureInitialPage } from './page-capture';
 import { parsePageSignals } from './parse';
+import { generatePersonaReplay } from './persona-replay';
+import { generateRewriteSuggestions } from './rewrite-suggestions';
 import { finalizeInitialVerdict } from './verdict';
 
 export async function processLaunchRun(runId: string) {
@@ -16,6 +19,9 @@ export async function processLaunchRun(runId: string) {
     select: {
       id: true,
       url: true,
+      audience: true,
+      trafficChannel: true,
+      desiredAction: true,
     },
   });
 
@@ -104,6 +110,31 @@ export async function processLaunchRun(runId: string) {
     });
   }
 
+  await updateRunStatus(runId, 'analyzing');
+
+  await createInitialFinding({
+    auditRunId: runId,
+    pageCaptureId: capture.pageCapture.id,
+    title: 'Initial evidence pass completed',
+    summary:
+      'Limen has captured the page HTML, resolved the final URL, and stored the first evidence snapshot with core launch signals.',
+    recommendation:
+      'Continue the pipeline with screenshot capture, richer extraction, and audience-specific analysis.',
+  });
+
+  await createHeuristicFindings({
+    auditRunId: runId,
+    pageCaptureId: capture.pageCapture.id,
+    title: capture.pageCapture.title,
+    metaDescription: parsedSignals.metaDescription,
+    h1: parsedSignals.h1,
+    ctas: parsedSignals.ctas,
+    trustSignals: parsedSignals.trustSignals,
+    heroText: parsedSignals.heroText,
+    heroWordCount: parsedSignals.heroWordCount,
+    viewport: capture.pageCapture.viewport,
+  });
+
   if (parsedSignals.h1 && capture.screenshotArtifactId) {
     await prisma.finding.create({
       data: {
@@ -161,7 +192,11 @@ export async function processLaunchRun(runId: string) {
     });
   }
 
-  if (parsedSignals.ctas.length > 0 && parsedSignals.trustSignals.length === 0 && capture.screenshotArtifactId) {
+  if (
+    parsedSignals.ctas.length > 0 &&
+    parsedSignals.trustSignals.length === 0 &&
+    capture.screenshotArtifactId
+  ) {
     await prisma.finding.create({
       data: {
         auditRunId: runId,
@@ -188,33 +223,6 @@ export async function processLaunchRun(runId: string) {
       },
     });
   }
-
-  await updateRunStatus(runId, 'analyzing');
-
-  await updateRunStatus(runId, 'analyzing');
-
-  await createInitialFinding({
-    auditRunId: runId,
-    pageCaptureId: capture.pageCapture.id,
-    title: 'Initial evidence pass completed',
-    summary:
-      'Limen has captured the page HTML, resolved the final URL, and stored the first evidence snapshot with core launch signals.',
-    recommendation:
-      'Continue the pipeline with screenshot capture, richer extraction, and audience-specific analysis.',
-  });
-
-  await createHeuristicFindings({
-    auditRunId: runId,
-    pageCaptureId: capture.pageCapture.id,
-    title: capture.pageCapture.title,
-    metaDescription: parsedSignals.metaDescription,
-    h1: parsedSignals.h1,
-    ctas: parsedSignals.ctas,
-    trustSignals: parsedSignals.trustSignals,
-    heroText: parsedSignals.heroText,
-    heroWordCount: parsedSignals.heroWordCount,
-    viewport: capture.pageCapture.viewport,
-  });
 
   await prisma.pageCapture.update({
     where: {
@@ -259,11 +267,37 @@ export async function processLaunchRun(runId: string) {
   });
 
   await updateRunStatus(runId, 'generating_verdict');
-  await updateRunStatus(runId, 'publishing');
   await finalizeInitialVerdict(runId, parsedSignals);
+
+  const personaReplay = await generatePersonaReplay({
+    runId,
+    audience: run.audience,
+    trafficChannel: run.trafficChannel,
+    desiredAction: run.desiredAction,
+    h1: parsedSignals.h1,
+    ctas: parsedSignals.ctas,
+    trustSignals: parsedSignals.trustSignals,
+    heroWordCount: parsedSignals.heroWordCount,
+  });
+
+  const rewrites = await generateRewriteSuggestions({
+    runId,
+    audience: run.audience,
+    desiredAction: run.desiredAction,
+    h1: parsedSignals.h1,
+    ctas: parsedSignals.ctas,
+    trustSignals: parsedSignals.trustSignals,
+    heroWordCount: parsedSignals.heroWordCount,
+  });
+
+  await updateRunStatus(runId, 'publishing');
+  const launchBoard = await synthesizeLaunchBoard(runId);
 
   return {
     pageCaptureId: capture.pageCapture.id,
     parsedSignals,
+    personaReplay,
+    rewrites,
+    launchBoard,
   };
 }
