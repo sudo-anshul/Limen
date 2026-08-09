@@ -1,14 +1,17 @@
-import { PrismaClient } from '@prisma/client';
+const { PrismaClient } = require('@prisma/client');
+
 async function main() {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-        console.log('No DATABASE_URL found, skipping DB setup.');
-        return;
-    }
-    console.log('Executing PostgreSQL direct DDL schema setup...');
-    const prisma = new PrismaClient();
-    const ddlStatements = [
-        `CREATE TABLE IF NOT EXISTS "AuditRun" (
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    console.log('No DATABASE_URL found, skipping DB setup.');
+    return;
+  }
+
+  console.log('Executing PostgreSQL direct DDL schema setup...');
+  const prisma = new PrismaClient();
+
+  const ddlStatements = [
+    `CREATE TABLE IF NOT EXISTS "AuditRun" (
       "id" TEXT PRIMARY KEY,
       "url" TEXT NOT NULL,
       "audience" TEXT NOT NULL,
@@ -24,7 +27,7 @@ async function main() {
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "completedAt" TIMESTAMP(3)
     );`,
-        `CREATE TABLE IF NOT EXISTS "PageCapture" (
+    `CREATE TABLE IF NOT EXISTS "PageCapture" (
       "id" TEXT PRIMARY KEY,
       "auditRunId" TEXT NOT NULL,
       "finalUrl" TEXT NOT NULL,
@@ -37,7 +40,7 @@ async function main() {
       "captureConfigVersion" TEXT,
       FOREIGN KEY ("auditRunId") REFERENCES "AuditRun"("id") ON DELETE CASCADE ON UPDATE CASCADE
     );`,
-        `CREATE TABLE IF NOT EXISTS "Artifact" (
+    `CREATE TABLE IF NOT EXISTS "Artifact" (
       "id" TEXT PRIMARY KEY,
       "auditRunId" TEXT NOT NULL,
       "kind" TEXT NOT NULL,
@@ -46,7 +49,7 @@ async function main() {
       "metadataJson" JSONB,
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
     );`,
-        `CREATE TABLE IF NOT EXISTS "ExtractedSignal" (
+    `CREATE TABLE IF NOT EXISTS "ExtractedSignal" (
       "id" TEXT PRIMARY KEY,
       "auditRunId" TEXT NOT NULL,
       "pageCaptureId" TEXT NOT NULL,
@@ -57,7 +60,7 @@ async function main() {
       FOREIGN KEY ("auditRunId") REFERENCES "AuditRun"("id") ON DELETE CASCADE ON UPDATE CASCADE,
       FOREIGN KEY ("pageCaptureId") REFERENCES "PageCapture"("id") ON DELETE CASCADE ON UPDATE CASCADE
     );`,
-        `CREATE TABLE IF NOT EXISTS "Finding" (
+    `CREATE TABLE IF NOT EXISTS "Finding" (
       "id" TEXT PRIMARY KEY,
       "auditRunId" TEXT NOT NULL,
       "category" TEXT NOT NULL,
@@ -76,7 +79,7 @@ async function main() {
       "source" TEXT NOT NULL DEFAULT 'llm',
       FOREIGN KEY ("auditRunId") REFERENCES "AuditRun"("id") ON DELETE CASCADE ON UPDATE CASCADE
     );`,
-        `CREATE TABLE IF NOT EXISTS "PersonaReplay" (
+    `CREATE TABLE IF NOT EXISTS "PersonaReplay" (
       "id" TEXT PRIMARY KEY,
       "auditRunId" TEXT NOT NULL,
       "personaName" TEXT NOT NULL,
@@ -88,7 +91,7 @@ async function main() {
       "resolutionSuggestion" TEXT NOT NULL,
       FOREIGN KEY ("auditRunId") REFERENCES "AuditRun"("id") ON DELETE CASCADE ON UPDATE CASCADE
     );`,
-        `CREATE TABLE IF NOT EXISTS "RewriteSuggestion" (
+    `CREATE TABLE IF NOT EXISTS "RewriteSuggestion" (
       "id" TEXT PRIMARY KEY,
       "auditRunId" TEXT NOT NULL,
       "fieldType" TEXT NOT NULL,
@@ -98,7 +101,7 @@ async function main() {
       "audienceFitNote" TEXT NOT NULL,
       FOREIGN KEY ("auditRunId") REFERENCES "AuditRun"("id") ON DELETE CASCADE ON UPDATE CASCADE
     );`,
-        `CREATE TABLE IF NOT EXISTS "AnalyzerExecution" (
+    `CREATE TABLE IF NOT EXISTS "AnalyzerExecution" (
       "id" TEXT PRIMARY KEY,
       "auditRunId" TEXT NOT NULL,
       "analyzerName" TEXT NOT NULL,
@@ -110,19 +113,21 @@ async function main() {
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY ("auditRunId") REFERENCES "AuditRun"("id") ON DELETE CASCADE ON UPDATE CASCADE
     );`
-    ];
-    for (const statement of ddlStatements) {
-        try {
-            await prisma.$executeRawUnsafe(statement);
-        }
-        catch (err) {
-            console.warn('DDL statement warning:', err);
-        }
+  ];
+
+  for (const statement of ddlStatements) {
+    try {
+      await prisma.$executeRawUnsafe(statement);
+    } catch (err) {
+      console.warn('DDL statement warning:', err);
     }
-    console.log('Successfully provisioned all PostgreSQL database tables via raw DDL.');
-    await prisma.$disconnect();
+  }
+
+  console.log('Successfully provisioned all PostgreSQL database tables via raw DDL.');
+  await prisma.$disconnect();
 }
+
 main().catch((e) => {
-    console.warn('Prepush script warning:', e);
-    process.exit(0);
+  console.warn('Prepush script warning:', e);
+  process.exit(0);
 });

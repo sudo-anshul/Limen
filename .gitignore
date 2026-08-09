@@ -4,8 +4,7 @@ node_modules
 .next
 apps/web/.next
 out
-dist
-!packages/db/dist/prepush.js
+# dist
 build
 coverage
 *.tsbuildinfo
