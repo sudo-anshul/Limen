@@ -13,6 +13,7 @@ zerops:
         - corepack enable
         - pnpm install --frozen-lockfile
         - pnpm --filter @limen/db run prisma:generate
+        - pnpm --filter @limen/db run build
         - sudo chown -R $(whoami) . || true
         - rm -rf apps/web/.next
         - pnpm --filter web build
