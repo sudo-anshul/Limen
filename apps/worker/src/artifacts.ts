@@ -4,7 +4,9 @@ import path from 'node:path';
 
 import { prisma } from '@limen/db';
 
-const ARTIFACT_ROOT = path.join(process.cwd(), '.artifacts');
+const ARTIFACT_ROOT = process.env.ARTIFACT_STORAGE_PATH
+  ? path.resolve(process.env.ARTIFACT_STORAGE_PATH)
+  : path.join(process.cwd(), '.artifacts');
 
 export async function persistHtmlArtifact({
   auditRunId,

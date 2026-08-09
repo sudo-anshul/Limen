@@ -1,0 +1,79 @@
+zerops:
+  # =========================================================================
+  # 1. NEXT.JS WEB APP SERVICE
+  # =========================================================================
+  - setup: web
+    build:
+      base: nodejs@22
+      buildCommands:
+        - corepack enable
+        - pnpm install --frozen-lockfile
+        - pnpm --filter @limen/db run prisma:generate
+        - pnpm --filter web build
+      deployFiles:
+        - apps/web
+        - packages
+        - node_modules
+        - package.json
+        - pnpm-workspace.yaml
+        - pnpm-lock.yaml
+      cache:
+        - node_modules
+        - .pnpm-store
+        - apps/web/.next/cache
+    run:
+      base: nodejs@22
+      ports:
+        - port: 3000
+          httpSupport: true
+      envVariables:
+        NODE_ENV: production
+        DATABASE_URL: ${db_connectionString}
+        REDIS_URL: redis://${redis_hostname}:${redis_port}
+        ARTIFACT_STORAGE_PATH: /var/artifacts
+      initCommands:
+        - corepack enable
+        - pnpm --filter @limen/db run prisma:generate
+        - npx prisma db push --schema ./packages/db/prisma/schema.prisma --accept-data-loss
+      start: pnpm --filter web start
+
+  # =========================================================================
+  # 2. BACKGROUND WORKER SERVICE (Playwright + Crawler + LLM)
+  # =========================================================================
+  - setup: worker
+    build:
+      base: nodejs@22
+      os: ubuntu
+      prepareCommands:
+        - apt-get update
+        - apt-get install -y libgbm1 libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libasound2 libpangocairo-1.0-0 libxshmfence1 libgtk-3-0
+      buildCommands:
+        - corepack enable
+        - pnpm install --frozen-lockfile
+        - pnpm --filter @limen/db run prisma:generate
+        - pnpm --filter worker build
+        - npx playwright install chromium
+      deployFiles:
+        - apps/worker
+        - packages
+        - node_modules
+        - package.json
+        - pnpm-workspace.yaml
+        - pnpm-lock.yaml
+      cache:
+        - node_modules
+        - .pnpm-store
+        - /root/.cache/ms-playwright
+    run:
+      base: nodejs@22
+      os: ubuntu
+      prepareCommands:
+        - apt-get update
+        - apt-get install -y libgbm1 libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libasound2 libpangocairo-1.0-0 libxshmfence1 libgtk-3-0
+        - npx playwright install chromium
+      envVariables:
+        NODE_ENV: production
+        DATABASE_URL: ${db_connectionString}
+        REDIS_URL: redis://${redis_hostname}:${redis_port}
+        ARTIFACT_STORAGE_PATH: /var/artifacts
+      start: pnpm --filter worker start

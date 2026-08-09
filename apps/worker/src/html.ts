@@ -6,7 +6,7 @@ export type HtmlFetchResult = {
   title: string | null;
 };
 
-function extractTitle(html: string) {
+export function extractTitle(html: string) {
   const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const title = match?.[1];
   return title ? title.trim() : null;

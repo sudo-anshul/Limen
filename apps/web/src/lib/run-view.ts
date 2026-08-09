@@ -8,42 +8,84 @@ export function formatChannel(channel: string) {
 export function verdictTone(verdict: string | null) {
   switch (verdict) {
     case 'ship':
-      return 'border-emerald-500/30 bg-emerald-500/15 text-emerald-100';
+      return 'border-[var(--color-positive)]/30 bg-[var(--color-positive-bg)] text-[var(--color-positive)]';
     case 'caveat':
-      return 'border-amber-500/30 bg-amber-500/15 text-amber-100';
+      return 'border-[var(--color-warning)]/40 bg-[var(--color-warning-bg)] text-[var(--color-warning)]';
     case 'block':
-      return 'border-rose-500/30 bg-rose-500/15 text-rose-100';
+      return 'border-[var(--color-negative)]/30 bg-[var(--color-negative-bg)] text-[var(--color-negative)]';
     default:
-      return 'border-white/10 bg-white/5 text-zinc-200';
+      return 'border-[var(--color-border)] bg-[var(--color-canvas)] text-[var(--color-text-secondary)]';
+  }
+}
+
+export function verdictAccentTone(verdict: string | null) {
+  switch (verdict) {
+    case 'ship':
+      return 'from-[#5A9790]/15 via-[#5A9790]/5 to-transparent';
+    case 'caveat':
+      return 'from-[#D9B96A]/15 via-[#D9B96A]/5 to-transparent';
+    case 'block':
+      return 'from-[#C97A85]/15 via-[#C97A85]/5 to-transparent';
+    default:
+      return 'from-[var(--color-primary)]/10 via-transparent to-transparent';
   }
 }
 
 export function confidenceTone(confidence: string | null) {
   switch (confidence) {
     case 'high':
-      return 'text-emerald-200';
+      return 'text-[var(--color-positive)]';
     case 'medium':
-      return 'text-amber-200';
+      return 'text-[var(--color-warning)]';
     case 'low':
-      return 'text-zinc-200';
+      return 'text-[var(--color-negative)]';
     default:
-      return 'text-zinc-300';
+      return 'text-[var(--color-text-secondary)]';
+  }
+}
+
+export function confidenceLabel(confidence: string | null) {
+  switch (confidence) {
+    case 'high':
+      return 'High Confidence';
+    case 'medium':
+      return 'Medium Confidence';
+    case 'low':
+      return 'Low Confidence';
+    default:
+      return 'Confidence Pending';
+  }
+}
+
+export function verdictLabel(verdict: string | null) {
+  switch (verdict) {
+    case 'ship':
+      return 'Ship';
+    case 'caveat':
+      return 'Caveat';
+    case 'block':
+      return 'Block';
+    default:
+      return 'Pending';
   }
 }
 
 export function findingCategoryLabel(category: string) {
   switch (category) {
     case 'launch_blocker':
-      return 'Launch blocker';
+      return 'Launch Blocker';
     case 'trust_gap':
-      return 'Trust gap';
+      return 'Trust Gap';
     case 'message_alignment':
-      return 'Message alignment';
+      return 'Message Alignment';
     case 'cta_friction':
-      return 'CTA friction';
+      return 'CTA Friction';
     case 'channel_mismatch':
-      return 'Channel mismatch';
+      return 'Channel Mismatch';
     default:
-      return category;
+      return category
+        .split('_')
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
   }
 }

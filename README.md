@@ -449,6 +449,35 @@ Potential next improvements:
 
 ---
 
+## Deploying on Zerops
+
+Limen is fully configured for automated cloud deployment and vertical auto-scaling on [Zerops](https://zerops.io/).
+
+### 1. Import Services & Infrastructure
+Create the project and provision all required services (Next.js web app, background worker, managed PostgreSQL, and KeyDB queue) using the provided [`zerops-project.yml`](file:///Users/anshul/Pictures/Limen/zerops-project.yml):
+
+```bash
+# Using the Zerops CLI (zCLI)
+zcli project service-import zerops-project.yml
+```
+*Or paste the contents of `zerops-project.yml` directly into the Zerops GUI under **Project > Import Services**.*
+
+### 2. Connect Your Repository & Deploy
+1. In your Zerops project dashboard, connect your GitHub repository to both the `web` and `worker` services.
+2. Zerops will detect [`zerops.yml`](file:///Users/anshul/Pictures/Limen/zerops.yml) and automatically run the build, dependency installation, browser binary provisioning, and database schema synchronization.
+
+### 3. Environment Variables
+Zerops automatically injects database and queue connection strings. Configure your LLM API keys in the Zerops GUI under the `worker` service environment variables:
+
+| Variable | Description | Required |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | Injected automatically by Zerops (`${db_connectionString}`) | Yes |
+| `REDIS_URL` | Injected automatically by Zerops (`redis://${redis_hostname}:${redis_port}`) | Yes |
+| `GEMINI_API_KEY` | Google Gemini API key for synthesis | Recommended |
+| `OPENAI_API_KEY` | OpenAI API key (fallback provider) | Optional |
+
+---
+
 ## Repo structure
 
 ```text

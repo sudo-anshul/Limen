@@ -1,3 +1,6 @@
+'use client';
+
+import React from 'react';
 import { loadingSteps, runStatusLabels } from '@/lib/run-status';
 
 type PipelineStatusProps = {
@@ -21,70 +24,62 @@ export function PipelineStatus({ status }: PipelineStatusProps) {
   const currentStep = stepStatusMap[status as keyof typeof stepStatusMap] ?? 0;
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-white">Pipeline status</h2>
-        <p className="mt-2 text-sm leading-6 text-zinc-400">
-          This view now reflects real worker progression through Limen&apos;s first evidence pipeline.
-        </p>
+    <section className="ds-card p-5 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[var(--color-border)] mb-5">
+        <div>
+          <div className="ds-card-label">Evidence Pipeline</div>
+          <h2 className="text-scale-20 font-bold text-[var(--color-text-primary)] mt-1">
+            Realtime Analysis Progress
+          </h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-[var(--color-primary)] animate-pulse" />
+          <span className="text-scale-12 font-semibold px-3 py-1 rounded-full bg-[var(--color-primary-badge)] text-[var(--color-primary)]">
+            {runStatusLabels[status] ?? status}
+          </span>
+        </div>
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {loadingSteps.map((step, index) => {
-          const state =
-            currentStep > index + 1 ? 'completed' : currentStep === index + 1 ? 'active' : 'pending';
+          const isCompleted = currentStep > index + 1;
+          const isActive = currentStep === index + 1;
 
           return (
             <div
               key={step}
-              className="flex items-center justify-between rounded-2xl border border-white/10 bg-zinc-950/60 px-4 py-4"
+              className={`p-3.5 rounded-[var(--radius-card)] border transition-all ${
+                isActive
+                  ? 'bg-[var(--color-surface)] border-[var(--color-primary)] ring-1 ring-[var(--color-primary-soft)] shadow-xs'
+                  : isCompleted
+                  ? 'bg-[var(--color-surface)] border-[var(--color-border)]'
+                  : 'bg-[var(--color-canvas)] border-[var(--color-border-subtle)] opacity-70'
+              }`}
             >
-              <div>
-                <p className="text-sm text-zinc-400">Step 0{index + 1}</p>
-                <p className="mt-1 text-base font-medium text-white">{step}</p>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-scale-11 font-mono text-[var(--color-text-muted)] font-semibold">
+                  0{index + 1}
+                </span>
+                <span
+                  className={`text-[10.5px] font-semibold px-2 py-0.5 rounded-full ${
+                    isCompleted
+                      ? 'bg-[var(--color-positive-bg)] text-[var(--color-positive)]'
+                      : isActive
+                      ? 'bg-[var(--color-primary-badge)] text-[var(--color-primary)] animate-pulse'
+                      : 'bg-[var(--color-border)] text-[var(--color-text-muted)]'
+                  }`}
+                >
+                  {isCompleted ? '✓ Done' : isActive ? 'Active' : 'Pending'}
+                </span>
               </div>
-              <span className={`rounded-full border px-3 py-1 text-sm ${stateTone(state)}`}>
-                {stateLabel(state, status)}
-              </span>
+
+              <div className="text-scale-13 font-semibold text-[var(--color-text-primary)] truncate">
+                {step}
+              </div>
             </div>
           );
         })}
       </div>
-
-      <div className="mt-6 rounded-2xl border border-white/10 bg-zinc-950/60 px-4 py-4">
-        <p className="text-sm text-zinc-400">Current worker status</p>
-        <p className="mt-2 text-base font-medium text-white">{runStatusLabels[status] ?? status}</p>
-      </div>
     </section>
   );
-}
-
-function stateTone(state: 'completed' | 'active' | 'pending') {
-  switch (state) {
-    case 'completed':
-      return 'border-emerald-500/30 bg-emerald-500/15 text-emerald-100';
-    case 'active':
-      return 'border-amber-500/30 bg-amber-500/15 text-amber-100';
-    default:
-      return 'border-white/10 bg-white/5 text-zinc-300';
-  }
-}
-
-function stateLabel(state: 'completed' | 'active' | 'pending', status: string) {
-  if (status === 'failed') {
-    return 'Failed';
-  }
-
-  if (status === 'partial_failed') {
-    return state === 'completed' ? 'Completed' : 'Partial';
-  }
-
-  switch (state) {
-    case 'completed':
-      return 'Completed';
-    case 'active':
-      return 'Active';
-    default:
-      return 'Pending';
-  }
 }

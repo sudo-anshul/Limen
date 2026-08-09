@@ -18,18 +18,22 @@ export async function createInitialFinding({
       auditRunId,
       category: 'launch_blocker',
       title,
-      severity: 'medium',
+      severity: 'low',
       confidence: 'medium',
       summary,
-      whyItMatters: 'Limen needs verified evidence from the page before giving stronger launch advice.',
-      likelyReaction: 'The page may still be unclear or risky until a richer evidence pass is complete.',
+      whyItMatters: 'This confirms the run has collected enough evidence to continue the launch review pipeline.',
+      likelyReaction: 'This is an internal milestone, not a user-facing launch issue.',
       recommendation,
       evidenceRefsJson: [
         {
           pageCaptureId,
         },
       ],
-      priorityRank: 0,
+      priorityRank: 1000,
+      isActionable: false,
+      source: 'system',
+      mustFixBeforeLaunch: false,
+      launchDimension: 'system',
     },
   });
 }

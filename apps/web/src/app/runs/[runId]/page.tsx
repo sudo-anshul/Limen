@@ -1,10 +1,19 @@
-import { prisma } from '@limen/db';
+import React, { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-
+import { prisma } from '@limen/db';
+import { AppHeader } from '@/components/app-header';
+import { AppSidebar } from '@/components/app-sidebar';
+import { LiveRunRefresh } from '@/components/live-run-refresh';
 import { PipelineStatus } from '@/components/pipeline-status';
 import { RunResults } from '@/components/run-results';
+import { HeroDecisionCard } from '@/components/hero-decision-card';
 import { runStatusLabels } from '@/lib/run-status';
-import { formatChannel, verdictTone } from '@/lib/run-view';
+import {
+  confidenceLabel,
+  formatChannel,
+  verdictLabel,
+  verdictTone,
+} from '@/lib/run-view';
 
 type RunPageProps = {
   params: Promise<{
@@ -37,9 +46,13 @@ export default async function RunPage({ params }: RunPageProps) {
           confidence: true,
           summary: true,
           whyItMatters: true,
+          likelyReaction: true,
           recommendation: true,
           priorityRank: true,
           evidenceRefsJson: true,
+          isActionable: true,
+          mustFixBeforeLaunch: true,
+          launchDimension: true,
         },
       },
       extractedSignals: {
@@ -50,7 +63,15 @@ export default async function RunPage({ params }: RunPageProps) {
       analyzers: {
         where: {
           analyzerName: {
-            in: ['launch_board_summary', 'persona_replay', 'rewrite_suggestions'],
+            in: [
+              'launch_board_summary',
+              'persona_replay',
+              'rewrite_suggestions',
+              'external_evidence_capture',
+              'llm_launch_report',
+              'report_stage',
+              'analysis_input',
+            ],
           },
         },
         orderBy: {
@@ -74,100 +95,140 @@ export default async function RunPage({ params }: RunPageProps) {
     notFound();
   }
 
-  const hasResults = run.findings.length > 0 || run.pageCaptures.length > 0 || run.verdict;
+  const hasResults =
+    run.findings.length > 0 || run.pageCaptures.length > 0 || run.verdict;
+  const actionableFindings = run.findings.filter((finding) => finding.isActionable);
+  const mustFixCount = actionableFindings.filter(
+    (finding) => finding.mustFixBeforeLaunch,
+  ).length;
+  const primaryCapture = run.pageCaptures[0];
+  const confidence = confidenceLabel(run.confidence);
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-16 text-white sm:px-10 lg:px-12">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-10">
-        <div className="space-y-4">
-          <p className="text-sm font-medium uppercase tracking-[0.22em] text-zinc-400">
-            Launch run
-          </p>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-3">
-              <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Run {run.id}</h1>
-              <p className="max-w-3xl text-lg leading-8 text-zinc-300">
-                Limen now renders this page from real stored evidence, findings, and verdict state.
-              </p>
+    <div className="min-h-screen flex flex-col bg-[var(--app-bg)] text-[var(--app-text)]">
+      <Suspense fallback={null}>
+        <LiveRunRefresh status={run.status} />
+      </Suspense>
+
+      {/* Global Topbar Header */}
+      <AppHeader
+        currentTitle={primaryCapture?.title ?? run.url}
+        subtitle={formatChannel(run.trafficChannel)}
+      />
+
+      {/* Main Shell */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Persistent Collapsible Sidebar */}
+        <AppSidebar
+          currentRunId={run.id}
+          runVerdict={run.verdict}
+          mustFixCount={mustFixCount}
+          confidenceScore={confidence}
+          className="hidden md:flex"
+        />
+
+        {/* Content Canvas */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-7 overflow-y-auto max-w-7xl space-y-6">
+          {/* Breadcrumb & Run Metadata Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-scale-12 pb-2 border-b border-[var(--color-border)]">
+            <div className="flex flex-wrap items-center gap-2 text-[var(--color-text-muted)]">
+              <span>Workspaces</span>
+              <span>/</span>
+              <span>Launch Desk</span>
+              <span>/</span>
+              <span className="font-semibold text-[var(--color-text-primary)] truncate max-w-sm">
+                {primaryCapture?.title ?? run.url}
+              </span>
             </div>
-            <div
-              className={`inline-flex w-fit items-center rounded-full border px-4 py-2 text-sm font-medium ${verdictTone(run.verdict)}`}
-            >
-              {run.verdict ? `${run.verdict} verdict` : runStatusLabels[run.status] ?? run.status}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-scale-11 px-2.5 py-0.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+                Target: {formatChannel(run.trafficChannel)}
+              </span>
+              <span
+                className={`text-scale-11 font-semibold px-2.5 py-0.5 rounded-full border ${verdictTone(
+                  run.verdict,
+                )}`}
+              >
+                {run.verdict ? `${verdictLabel(run.verdict)} Verdict` : runStatusLabels[run.status] ?? run.status}
+              </span>
             </div>
           </div>
-        </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
-            <h2 className="text-xl font-semibold text-white">Launch brief</h2>
-            <dl className="mt-6 grid gap-5 sm:grid-cols-2">
-              <Detail label="URL" value={run.url} />
-              <Detail label="Audience" value={run.audience} />
-              <Detail label="Traffic channel" value={formatChannel(run.trafficChannel)} />
-              <Detail label="Desired action" value={run.desiredAction} />
-              <Detail label="Offer" value={run.offer} className="sm:col-span-2" />
-              <Detail
-                label="Created"
-                value={new Intl.DateTimeFormat('en', {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                }).format(run.createdAt)}
-              />
-              <Detail label="Verdict" value={run.verdict ?? 'Pending'} />
-            </dl>
-          </section>
+          {/* Hero Decision Card */}
+          <HeroDecisionCard
+            title={
+              run.verdict === 'ship'
+                ? 'Page is Ready to Launch'
+                : run.verdict === 'block'
+                ? 'Launch Hold Recommended'
+                : 'Ship with Caveats'
+            }
+            verdict={run.verdict}
+            description={`Launch preflight analysis for ${run.audience} via ${formatChannel(
+              run.trafficChannel,
+            )}. Review prioritized findings, rendered DOM artifacts, and copy optimizations below.`}
+            ctaText="Run Another Check"
+            ctaHref="/runs/new"
+            badgeText={primaryCapture?.title ?? run.url}
+            metrics={[
+              { label: 'Verdict', value: run.verdict ? verdictLabel(run.verdict) : 'Pending' },
+              { label: 'Must-Fix Blockers', value: `${mustFixCount}` },
+              { label: 'Confidence', value: confidence },
+            ]}
+          />
 
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
-            <h2 className="text-xl font-semibold text-white">Run health</h2>
-            <div className="mt-6 space-y-4">
-              <StatusRow label="Current status" value={runStatusLabels[run.status] ?? run.status} />
-              <StatusRow label="Verdict" value={run.verdict ?? 'Not generated yet'} />
-              <StatusRow label="Confidence" value={run.confidence ?? 'Pending'} />
-              <StatusRow label="Findings" value={String(run.findings.length)} />
+          {/* Brief Scenario Quick Card */}
+          <div className="ds-card p-4 bg-[var(--color-surface)] border border-[var(--color-border)] grid grid-cols-2 sm:grid-cols-4 gap-4 text-scale-12">
+            <div>
+              <div className="ds-card-label text-[10.5px]">Target URL</div>
+              <div className="font-mono text-[var(--color-text-primary)] font-medium truncate mt-0.5">
+                {run.url}
+              </div>
             </div>
-          </section>
-        </div>
+            <div>
+              <div className="ds-card-label text-[10.5px]">Target Audience</div>
+              <div className="text-[var(--color-text-primary)] font-medium truncate mt-0.5">
+                {run.audience}
+              </div>
+            </div>
+            <div>
+              <div className="ds-card-label text-[10.5px]">Desired Action</div>
+              <div className="text-[var(--color-text-primary)] font-medium truncate mt-0.5">
+                {run.desiredAction}
+              </div>
+            </div>
+            <div>
+              <div className="ds-card-label text-[10.5px]">Core Offer</div>
+              <div className="text-[var(--color-text-primary)] font-medium truncate mt-0.5">
+                {run.offer}
+              </div>
+            </div>
+          </div>
 
-        <PipelineStatus status={run.status} />
+          {/* Realtime Pipeline Status */}
+          <div id="pipeline">
+            <PipelineStatus status={run.status} />
+          </div>
 
-        {hasResults ? (
-          <RunResults run={run} />
-        ) : (
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
-            <h2 className="text-xl font-semibold text-white">Waiting for first results</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-300">
-              Once the worker stores evidence and findings, the first Launch Board will appear here.
-            </p>
-          </section>
-        )}
+          {/* Main Decision Results or Pending Skeleton */}
+          {hasResults ? (
+            <RunResults run={run} />
+          ) : (
+            <section className="ds-card p-8 text-center space-y-4">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[var(--color-primary-badge)] text-[var(--color-primary)] text-xl animate-pulse">
+                ⚡
+              </div>
+              <h3 className="text-scale-20 font-bold text-[var(--color-text-primary)]">
+                Limen is Capturing & Synthesizing Evidence...
+              </h3>
+              <p className="text-scale-13 text-[var(--color-text-secondary)] max-w-xl mx-auto leading-relaxed">
+                Our headless browser is navigating to the page, extracting DOM structures, analyzing messaging clarity against your ICP, and generating copy rewrites. This view updates automatically.
+              </p>
+            </section>
+          )}
+        </main>
       </div>
-    </main>
-  );
-}
-
-function Detail({
-  label,
-  value,
-  className,
-}: {
-  label: string;
-  value: string;
-  className?: string;
-}) {
-  return (
-    <div className={className}>
-      <dt className="text-sm text-zinc-400">{label}</dt>
-      <dd className="mt-2 break-words text-base leading-7 text-white">{value}</dd>
-    </div>
-  );
-}
-
-function StatusRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-zinc-950/60 px-4 py-4">
-      <span className="text-sm text-zinc-400">{label}</span>
-      <span className="text-sm font-medium text-white">{value}</span>
     </div>
   );
 }

@@ -68,19 +68,26 @@ model ExtractedSignal {
 }
 
 model Finding {
-  id               String   @id @default(cuid())
-  auditRunId       String
-  auditRun         AuditRun @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
-  category         String
-  title            String
-  severity         String
-  confidence       String
-  summary          String
-  whyItMatters     String
-  likelyReaction   String
-  recommendation   String
-  evidenceRefsJson Json
-  priorityRank     Int
+  id                 String   @id @default(cuid())
+  auditRunId         String
+  auditRun           AuditRun @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  category           String
+  title              String
+  severity           String
+  confidence         String
+  summary            String
+  whyItMatters       String
+  likelyReaction     String
+  recommendation     String
+  evidenceRefsJson   Json
+  priorityRank       Int
+  isActionable       Boolean  @default(true)
+  mustFixBeforeLaunch Boolean @default(false)
+  launchDimension    String?
+  // Provenance: which stage produced this finding. The analyzer replaces only
+  // its own output, so deterministic findings survive a successful LLM pass.
+  // One of: heuristic | llm | system
+  source             String   @default("llm")
 }
 
 model PersonaReplay {

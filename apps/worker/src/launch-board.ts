@@ -7,9 +7,17 @@ export async function synthesizeLaunchBoard(runId: string) {
     },
     include: {
       findings: {
-        orderBy: {
-          priorityRank: 'asc',
+        where: {
+          isActionable: true,
         },
+        orderBy: [
+          {
+            mustFixBeforeLaunch: 'desc',
+          },
+          {
+            priorityRank: 'asc',
+          },
+        ],
       },
     },
   });
@@ -18,8 +26,9 @@ export async function synthesizeLaunchBoard(runId: string) {
     throw new Error(`Audit run ${runId} not found for synthesis.`);
   }
 
-  const blockers = run.findings.filter((finding) => finding.severity === 'high' || finding.severity === 'critical').slice(0, 3);
-  const topReasons = (blockers.length ? blockers : run.findings.slice(0, 3)).map((finding) => finding.title);
+  const blockers = run.findings.filter((finding) => finding.mustFixBeforeLaunch).slice(0, 3);
+  const caveats = run.findings.filter((finding) => !finding.mustFixBeforeLaunch).slice(0, 3);
+  const topReasons = (blockers.length ? blockers : caveats).map((finding) => finding.title);
   const topFixes = unique(
     (blockers.length ? blockers : run.findings.slice(0, 5)).map((finding) => finding.recommendation),
   ).slice(0, 3);
@@ -35,14 +44,17 @@ export async function synthesizeLaunchBoard(runId: string) {
     data: {
       auditRunId: runId,
       analyzerName: 'launch_board_summary',
-      version: 'v0-rule-synthesis',
+      version: 'v1-actionable-synthesis',
       inputRefJson: {
         findingCount: run.findings.length,
+        blockerCount: blockers.length,
       },
       outputJson: {
         summary,
         topReasons,
         topFixes,
+        blockers: blockers.map((finding) => finding.title),
+        caveats: caveats.map((finding) => finding.title),
       },
       status: 'completed',
     },
@@ -52,6 +64,8 @@ export async function synthesizeLaunchBoard(runId: string) {
     summary,
     topReasons,
     topFixes,
+    blockers: blockers.map((finding) => finding.title),
+    caveats: caveats.map((finding) => finding.title),
   };
 }
 
@@ -72,14 +86,14 @@ function buildSummary({
     .join(' ');
 
   if (verdict === 'block') {
-    return `Limen recommends blocking this launch for ${readableChannel} traffic aimed at ${audience} until the highest-risk issues are addressed. Primary concerns: ${topReasons.join('; ')}.`;
+    return `Limen recommends blocking this launch for ${readableChannel} traffic aimed at ${audience} until the must-fix issues are addressed. Primary blockers: ${topReasons.join('; ')}.`;
   }
 
   if (verdict === 'ship') {
-    return `Limen considers this page broadly ready for ${readableChannel} traffic aimed at ${audience}, with only minor issues remaining. Key strengths or safe signals: ${topReasons.join('; ')}.`;
+    return `Limen considers this page broadly ready for ${readableChannel} traffic aimed at ${audience}, with only lower-severity improvements remaining. The main strengths or safe signals are: ${topReasons.join('; ')}.`;
   }
 
-  return `Limen recommends shipping with caveats for ${readableChannel} traffic aimed at ${audience}. The page is viable, but the main risks are: ${topReasons.join('; ')}.`;
+  return `Limen recommends shipping with caveats for ${readableChannel} traffic aimed at ${audience}. The page is viable, but the main launch risks are: ${topReasons.join('; ')}.`;
 }
 
 function unique(values: string[]) {

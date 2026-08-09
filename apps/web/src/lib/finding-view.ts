@@ -1,12 +1,13 @@
 export function severityTone(severity: string) {
-  switch (severity) {
+  switch (severity.toLowerCase()) {
     case 'critical':
-      return 'border-rose-500/30 bg-rose-500/15 text-rose-100';
+      return 'border-[var(--color-negative)]/30 bg-[var(--color-negative-bg)] text-[var(--color-negative)]';
     case 'high':
-      return 'border-orange-500/30 bg-orange-500/15 text-orange-100';
+      return 'border-[var(--color-warning)]/40 bg-[var(--color-warning-bg)] text-[var(--color-warning)]';
     case 'medium':
-      return 'border-amber-500/30 bg-amber-500/15 text-amber-100';
+      return 'border-[var(--color-primary)]/30 bg-[var(--color-primary-badge)] text-[var(--color-primary)]';
+    case 'low':
     default:
-      return 'border-white/10 bg-white/5 text-zinc-200';
+      return 'border-[var(--color-border)] bg-[var(--color-canvas)] text-[var(--color-text-secondary)]';
   }
 }

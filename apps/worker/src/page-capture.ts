@@ -5,9 +5,17 @@ import { fetchHtml } from './html';
 import { captureRenderedEvidence } from './render';
 import { normalizeUrl } from './url';
 
-export async function captureInitialPage(auditRunId: string, inputUrl: string) {
+export async function captureInitialPage(
+  auditRunId: string,
+  inputUrl: string,
+  onStageChange?: (stage: 'fetching_html' | 'capturing_render') => Promise<void> | void,
+) {
   const normalizedUrl = normalizeUrl(inputUrl);
+
+  await onStageChange?.('fetching_html');
   const result = await fetchHtml(normalizedUrl);
+  await onStageChange?.('capturing_render');
+
   const htmlArtifact = await persistHtmlArtifact({
     auditRunId,
     html: result.html,

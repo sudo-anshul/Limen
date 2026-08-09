@@ -17,9 +17,11 @@ export async function captureScreenshot(url: string): Promise<ScreenshotCaptureR
     });
 
     await page.goto(url, {
-      waitUntil: 'networkidle',
-      timeout: 45_000,
+      waitUntil: 'domcontentloaded',
+      timeout: 20_000,
     });
+
+    await page.waitForTimeout(1_200);
 
     const screenshot = await page.screenshot({
       fullPage: true,

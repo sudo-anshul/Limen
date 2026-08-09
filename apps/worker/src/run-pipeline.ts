@@ -1,14 +1,15 @@
 import { prisma } from '@limen/db';
 
+import { buildAnalysisInput } from './analysis-input';
 import { updateRunStatus } from './db';
+import { captureEvidence } from './evidence';
 import { persistBasicSignals } from './extract';
 import { createInitialFinding } from './findings';
 import { createHeuristicFindings } from './heuristics';
-import { synthesizeLaunchBoard } from './launch-board';
+import { generateLaunchReportWithLlm } from './llm';
 import { captureInitialPage } from './page-capture';
 import { parsePageSignals } from './parse';
-import { generatePersonaReplay } from './persona-replay';
-import { generateRewriteSuggestions } from './rewrite-suggestions';
+import { persistLlmLaunchReport } from './persist-llm';
 import { finalizeInitialVerdict } from './verdict';
 
 export async function processLaunchRun(runId: string) {
@@ -22,6 +23,10 @@ export async function processLaunchRun(runId: string) {
       audience: true,
       trafficChannel: true,
       desiredAction: true,
+      offer: true,
+      brandVoice: true,
+      objectionsJson: true,
+      competitorsJson: true,
     },
   });
 
@@ -31,9 +36,11 @@ export async function processLaunchRun(runId: string) {
 
   await updateRunStatus(runId, 'validating');
 
-  const capture = await captureInitialPage(runId, run.url);
-
-  await updateRunStatus(runId, 'capturing');
+  const capture = await captureInitialPage(runId, run.url, async (stage) => {
+    if (stage === 'capturing_render') {
+      await updateRunStatus(runId, 'capturing');
+    }
+  });
 
   await prisma.auditRun.update({
     where: {
@@ -47,7 +54,13 @@ export async function processLaunchRun(runId: string) {
 
   await updateRunStatus(runId, 'extracting');
 
-  const parsedSignals = parsePageSignals(capture.html);
+  const externalEvidence = await captureEvidence(capture.normalizedUrl).catch((error) => {
+    console.warn(`External evidence capture failed for ${runId}, using local capture only.`, error);
+    return null;
+  });
+
+  const evidenceHtml = externalEvidence?.html || capture.html;
+  const parsedSignals = parsePageSignals(evidenceHtml);
 
   await persistBasicSignals({
     auditRunId: runId,
@@ -110,6 +123,27 @@ export async function processLaunchRun(runId: string) {
     });
   }
 
+  if (externalEvidence) {
+    await prisma.analyzerExecution.create({
+      data: {
+        auditRunId: runId,
+        analyzerName: 'external_evidence_capture',
+        version: `v1-${externalEvidence.provider}`,
+        inputRefJson: {
+          normalizedUrl: capture.normalizedUrl,
+        },
+        outputJson: {
+          provider: externalEvidence.provider,
+          finalUrl: externalEvidence.finalUrl,
+          title: externalEvidence.title,
+          markdownAvailable: Boolean(externalEvidence.markdown),
+          providerMeta: JSON.parse(JSON.stringify(externalEvidence.providerMeta)),
+        },
+        status: 'completed',
+      },
+    });
+  }
+
   await updateRunStatus(runId, 'analyzing');
 
   await createInitialFinding({
@@ -122,7 +156,7 @@ export async function processLaunchRun(runId: string) {
       'Continue the pipeline with screenshot capture, richer extraction, and audience-specific analysis.',
   });
 
-  await createHeuristicFindings({
+  const heuristicFindings = await createHeuristicFindings({
     auditRunId: runId,
     pageCaptureId: capture.pageCapture.id,
     title: capture.pageCapture.title,
@@ -135,169 +169,89 @@ export async function processLaunchRun(runId: string) {
     viewport: capture.pageCapture.viewport,
   });
 
-  if (parsedSignals.h1 && capture.screenshotArtifactId) {
-    await prisma.finding.create({
-      data: {
-        auditRunId: runId,
-        category: 'launch_blocker',
-        title: 'Screenshot-backed hero evidence available',
-        severity: 'medium',
-        confidence: 'medium',
-        summary:
-          'Limen captured rendered evidence for the page and can now anchor future visual findings to the first visible screen.',
-        whyItMatters:
-          'This enables screenshot-aware checks for hero clarity, CTA prominence, and trust placement in future passes.',
-        likelyReaction:
-          'The page now has enough rendered evidence to support stronger user-facing launch feedback.',
-        recommendation:
-          'Use the screenshot preview to review whether the hero and CTA are clear without reading the full page.',
-        evidenceRefsJson: [
-          {
-            pageCaptureId: capture.pageCapture.id,
-            artifactId: capture.screenshotArtifactId,
-            screenshotRegionHint: 'hero',
-          },
-        ],
-        priorityRank: 100,
-      },
-    });
-  }
-
-  if (parsedSignals.heroWordCount > 90 && capture.screenshotArtifactId) {
-    await prisma.finding.create({
-      data: {
-        auditRunId: runId,
-        category: 'message_alignment',
-        title: 'Above-the-fold copy may be visually dense',
-        severity: 'medium',
-        confidence: 'medium',
-        summary:
-          'The extracted hero section is long enough that the first visible screen may feel text-heavy for cold visitors.',
-        whyItMatters:
-          'Above-the-fold density can reduce clarity when users arrive from paid or unfamiliar channels.',
-        likelyReaction:
-          'Visitors may skim the opening screen without quickly understanding the core promise.',
-        recommendation:
-          'Trim the first screen to a tighter headline, one strong support line, and one obvious CTA.',
-        evidenceRefsJson: [
-          {
-            pageCaptureId: capture.pageCapture.id,
-            artifactId: capture.screenshotArtifactId,
-            screenshotRegionHint: 'hero',
-            textSnippet: parsedSignals.heroText ?? undefined,
-          },
-        ],
-        priorityRank: 101,
-      },
-    });
-  }
-
-  if (
-    parsedSignals.ctas.length > 0 &&
-    parsedSignals.trustSignals.length === 0 &&
-    capture.screenshotArtifactId
-  ) {
-    await prisma.finding.create({
-      data: {
-        auditRunId: runId,
-        category: 'trust_gap',
-        title: 'Visible CTA may outpace visible trust',
-        severity: 'medium',
-        confidence: 'medium',
-        summary:
-          'The page presents action opportunities, but the first evidence pass found little supporting trust language to balance the ask.',
-        whyItMatters:
-          'Cold traffic is more likely to resist action when the visible page asks before it reassures.',
-        likelyReaction:
-          'Visitors may notice the CTA but hesitate because the page has not yet earned enough credibility.',
-        recommendation:
-          'Bring proof closer to the first CTA or strengthen the visible trust section above the fold.',
-        evidenceRefsJson: [
-          {
-            pageCaptureId: capture.pageCapture.id,
-            artifactId: capture.screenshotArtifactId,
-            screenshotRegionHint: 'cta',
-          },
-        ],
-        priorityRank: 102,
-      },
-    });
-  }
-
-  await prisma.pageCapture.update({
-    where: {
-      id: capture.pageCapture.id,
-    },
-    data: {
-      title: capture.pageCapture.title ?? parsedSignals.h1,
-      viewport: capture.pageCapture.viewport,
-      screenshotArtifactId: capture.screenshotArtifactId,
-    },
-  });
-
-  console.log('Parsed page signals', {
-    runId,
-    h1: parsedSignals.h1,
-    ctas: parsedSignals.ctas.length,
-    trustSignals: parsedSignals.trustSignals.length,
-    screenshotArtifactId: capture.screenshotArtifactId,
-    viewport: capture.pageCapture.viewport,
-  });
-
-  await createInitialFinding({
-    auditRunId: runId,
-    pageCaptureId: capture.pageCapture.id,
-    title: 'Rendered screenshot captured',
-    summary:
-      'Limen captured a rendered screenshot of the page, enabling the next phase of visual and above-the-fold analysis.',
-    recommendation:
-      'Use the screenshot artifact to assess hero clarity, CTA prominence, and visible trust placement.',
-  });
-
-  await prisma.auditRun.update({
-    where: {
-      id: runId,
-    },
-    data: {
-      confidence:
-        parsedSignals.h1 && parsedSignals.ctas.length > 0 && capture.screenshotArtifactId
-          ? 'medium'
-          : 'low',
-    },
-  });
-
   await updateRunStatus(runId, 'generating_verdict');
-  await finalizeInitialVerdict(runId, parsedSignals);
 
-  const personaReplay = await generatePersonaReplay({
+  const analysisInput = buildAnalysisInput({
+    title: externalEvidence?.title ?? capture.pageCapture.title,
+    markdown: externalEvidence?.markdown ?? null,
+    html: evidenceHtml,
+    parsedSignals,
+    deterministicFindings: heuristicFindings.map((finding) => ({
+      title: finding.title,
+      severity: finding.severity,
+      launchDimension: finding.launchDimension,
+      mustFixBeforeLaunch: finding.mustFixBeforeLaunch,
+      evidenceField: finding.evidenceField,
+    })),
+  });
+
+  if (externalEvidence) {
+    await prisma.analyzerExecution.create({
+      data: {
+        auditRunId: runId,
+        analyzerName: 'analysis_input',
+        version: 'v1-chunked-page-model',
+        inputRefJson: {
+          provider: externalEvidence.provider,
+        },
+        outputJson: analysisInput,
+        status: 'completed',
+      },
+    });
+  }
+
+  const competitors = Array.isArray(run.competitorsJson)
+    ? run.competitorsJson.map(String).filter(Boolean)
+    : [];
+
+  const llmReport = await generateLaunchReportWithLlm({
     runId,
+    url: capture.normalizedUrl,
     audience: run.audience,
     trafficChannel: run.trafficChannel,
     desiredAction: run.desiredAction,
-    h1: parsedSignals.h1,
-    ctas: parsedSignals.ctas,
-    trustSignals: parsedSignals.trustSignals,
-    heroWordCount: parsedSignals.heroWordCount,
+    offer: run.offer,
+    objections: Array.isArray(run.objectionsJson) ? run.objectionsJson.map(String) : [],
+    competitors,
+    brandVoice: run.brandVoice,
+    analysisInput,
   });
 
-  const rewrites = await generateRewriteSuggestions({
-    runId,
-    audience: run.audience,
-    desiredAction: run.desiredAction,
-    h1: parsedSignals.h1,
-    ctas: parsedSignals.ctas,
-    trustSignals: parsedSignals.trustSignals,
-    heroWordCount: parsedSignals.heroWordCount,
-  });
+  if (llmReport) {
+    await prisma.auditRun.update({
+      where: { id: runId },
+      data: {
+        status: 'publishing',
+      },
+    });
 
-  await updateRunStatus(runId, 'publishing');
-  const launchBoard = await synthesizeLaunchBoard(runId);
+    await persistLlmLaunchReport({
+      runId,
+      pageCaptureId: capture.pageCapture.id,
+      provider: llmReport.provider,
+      report: llmReport.report,
+    });
+  } else {
+    // Capture and deterministic extraction succeeded but interpretation did not.
+    // The run still carries real evidence, so it is a partial result rather than
+    // a failure — and it must not be presented as a complete analysis.
+    const { verdict, confidence } = finalizeInitialVerdict(parsedSignals);
+
+    await prisma.auditRun.update({
+      where: { id: runId },
+      data: {
+        verdict,
+        confidence,
+        completedAt: new Date(),
+      },
+    });
+  }
+
+  await updateRunStatus(runId, llmReport ? 'completed' : 'partial_failed');
 
   return {
     pageCaptureId: capture.pageCapture.id,
     parsedSignals,
-    personaReplay,
-    rewrites,
-    launchBoard,
+    llmProvider: llmReport?.provider ?? null,
   };
 }

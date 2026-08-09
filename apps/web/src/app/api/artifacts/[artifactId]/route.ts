@@ -24,15 +24,28 @@ export async function GET(
   }
 
   const filePath = path.resolve(artifact.storagePath);
-  const file = await readFile(filePath);
+  
+  // Security containment check: ensure artifact resides inside a valid artifacts directory
+  const isAllowedPath =
+    filePath.includes(`${path.sep}.artifacts${path.sep}`) ||
+    filePath.includes(`${path.sep}artifacts${path.sep}`);
+  if (!isAllowedPath) {
+    return new Response('Forbidden: Invalid artifact path', { status: 403 });
+  }
 
-  const contentType = artifact.kind === 'screenshot' ? 'image/png' : 'text/html; charset=utf-8';
+  try {
+    const file = await readFile(filePath);
+    const contentType = artifact.kind === 'screenshot' ? 'image/png' : 'text/html; charset=utf-8';
 
-  return new Response(file, {
-    status: 200,
-    headers: {
-      'Content-Type': contentType,
-      'Cache-Control': 'no-store',
-    },
-  });
+    return new Response(file, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+      },
+    });
+  } catch (err: unknown) {
+    console.error(`Artifact file missing on disk: ${filePath}`, err);
+    return new Response('Artifact file not found on disk', { status: 404 });
+  }
 }

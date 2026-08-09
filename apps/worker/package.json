@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "echo 'lint not configured yet'"
   },
   "dependencies": {
+    "@google/genai": "^1.15.0",
     "@limen/db": "workspace:*",
     "@limen/shared": "workspace:*",
     "bullmq": "^5.12.15",

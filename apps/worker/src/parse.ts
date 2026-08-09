@@ -56,8 +56,8 @@ function extractHeroText(html: string) {
 function extractVisibleSectionHints(html: string) {
   const hints = unique(
     [
-      ...extractAllMatches(html, /<(section|div)[^>]+id=["']([^"']+)["'][^>]*>/gi),
-      ...extractAllMatches(html, /<(section|div)[^>]+class=["']([^"']+)["'][^>]*>/gi),
+      ...extractAllMatches(html, /<(?:section|div|main|article)[^>]+id=["']([^"']+)["'][^>]*>/gi),
+      ...extractAllMatches(html, /<(?:section|div|main|article)[^>]+class=["']([^"']*(?:hero|feature|pricing|testimonial|faq|header|footer|cta|about|proof|banner)[^"']*)["'][^>]*>/gi),
     ].slice(0, 12),
   );
 
