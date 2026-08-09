@@ -13,7 +13,6 @@ zerops:
         - corepack enable
         - pnpm install --frozen-lockfile
         - pnpm --filter @limen/db run prisma:generate
-        - pnpm --filter @limen/db run prisma:push
         - pnpm --filter web build
       deployFiles:
         - apps/web
@@ -40,7 +39,7 @@ zerops:
         DATABASE_URL: ${db_connectionString}
         REDIS_URL: redis://${redis_hostname}:${redis_port}
         ARTIFACT_STORAGE_PATH: /var/artifacts
-      start: pnpm --filter web start
+      start: pnpm --filter @limen/db run prisma:push && pnpm --filter web start
 
   # =========================================================================
   # 2. BACKGROUND WORKER SERVICE (Playwright + Crawler + LLM)
@@ -57,7 +56,7 @@ zerops:
         - pnpm install --frozen-lockfile
         - pnpm --filter @limen/db run prisma:generate
         - pnpm --filter worker build
-        - npx playwright install chromium
+        - pnpm --filter worker exec playwright install chromium
       deployFiles:
         - apps/worker
         - packages
@@ -75,7 +74,8 @@ zerops:
       prepareCommands:
         - sudo apt-get update
         - sudo apt-get install -y openssl libssl-dev libgbm1 libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libasound2 libpangocairo-1.0-0 libxshmfence1 libgtk-3-0
-        - npx playwright install chromium
+        - corepack enable
+        - pnpm --filter worker exec playwright install chromium
       envVariables:
         NODE_ENV: production
         DATABASE_URL: ${db_connectionString}
