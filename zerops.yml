@@ -39,10 +39,6 @@ zerops:
         DATABASE_URL: ${db_connectionString}
         REDIS_URL: redis://${redis_hostname}:${redis_port}
         ARTIFACT_STORAGE_PATH: /var/artifacts
-      initCommands:
-        - corepack enable
-        - pnpm --filter @limen/db run prisma:generate
-        - pnpm --filter @limen/db run prisma:push
       start: pnpm --filter web start
 
   # =========================================================================
