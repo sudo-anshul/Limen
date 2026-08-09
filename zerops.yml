@@ -13,6 +13,7 @@ zerops:
         - corepack enable
         - pnpm install --frozen-lockfile
         - pnpm --filter @limen/db run prisma:generate
+        - pnpm --filter @limen/db run prisma:push
         - pnpm --filter web build
       deployFiles:
         - apps/web
