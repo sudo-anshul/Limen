@@ -37,7 +37,7 @@ zerops:
           httpSupport: true
       envVariables:
         NODE_ENV: production
-        DATABASE_URL: ${db_connectionString}?schema=limen
+        DATABASE_URL: ${db_connectionString}
         REDIS_URL: redis://${redis_hostname}:${redis_port}
         ARTIFACT_STORAGE_PATH: /var/artifacts
       start: pnpm --filter web start
@@ -78,7 +78,7 @@ zerops:
         - npx playwright install chromium
       envVariables:
         NODE_ENV: production
-        DATABASE_URL: ${db_connectionString}?schema=limen
+        DATABASE_URL: ${db_connectionString}
         REDIS_URL: redis://${redis_hostname}:${redis_port}
         ARTIFACT_STORAGE_PATH: /var/artifacts
       start: pnpm --filter worker start
