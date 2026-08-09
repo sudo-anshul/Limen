@@ -43,7 +43,7 @@ zerops:
         DATABASE_URL: ${db_connectionString}
         REDIS_URL: redis://${redis_hostname}:${redis_port}
         ARTIFACT_STORAGE_PATH: /var/artifacts
-      start: pnpm --filter @limen/db run prisma:push && pnpm --filter web start
+      start: pnpm --filter web start
 
   # =========================================================================
   # 2. BACKGROUND WORKER SERVICE (Playwright + Crawler + LLM)
