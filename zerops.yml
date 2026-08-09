@@ -13,6 +13,8 @@ zerops:
         - corepack enable
         - pnpm install --frozen-lockfile
         - pnpm --filter @limen/db run prisma:generate
+        - sudo chown -R $(whoami) . || true
+        - rm -rf apps/web/.next
         - pnpm --filter web build
       deployFiles:
         - apps/web
@@ -24,7 +26,6 @@ zerops:
       cache:
         - node_modules
         - .pnpm-store
-        - apps/web/.next/cache
     run:
       base: nodejs@22
       os: ubuntu
