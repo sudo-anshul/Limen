@@ -38,6 +38,8 @@ zerops:
           httpSupport: true
       envVariables:
         NODE_ENV: production
+        PORT: 3000
+        HOSTNAME: 0.0.0.0
         DATABASE_URL: ${db_connectionString}
         REDIS_URL: redis://${redis_hostname}:${redis_port}
         ARTIFACT_STORAGE_PATH: /var/artifacts
