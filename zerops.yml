@@ -10,11 +10,16 @@ zerops:
         - pnpm install --frozen-lockfile
         - pnpm --filter @limen/db run prisma:generate
         - pnpm --filter web build
-        - cp -r apps/web/.next/standalone/. .deploy/
-        - cp -r apps/web/.next/static .deploy/apps/web/.next/static
-        - cp -r apps/web/public .deploy/apps/web/public || true
       deployFiles:
-        - .deploy
+        - apps/web
+        - packages
+        - node_modules
+        - package.json
+        - pnpm-workspace.yaml
+        - pnpm-lock.yaml
+      cache:
+        - node_modules
+        - .pnpm-store
     run:
       base: nodejs@22
       ports:
@@ -27,7 +32,7 @@ zerops:
         DATABASE_URL: ${db_connectionString}
         REDIS_URL: redis://${redis_hostname}:${redis_port}
         ARTIFACT_STORAGE_PATH: /var/artifacts
-      start: node apps/web/server.js
+      start: pnpm --filter web start
 
   # =========================================================================
   # 2. BACKGROUND WORKER SERVICE (Playwright + Crawler + LLM)
