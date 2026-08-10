@@ -5,6 +5,10 @@ zerops:
   - setup: web
     build:
       base: nodejs@22
+      os: ubuntu
+      prepareCommands:
+        - sudo apt-get update
+        - sudo apt-get install -y openssl libssl-dev
       buildCommands:
         - corepack enable
         - pnpm install --frozen-lockfile
@@ -22,6 +26,10 @@ zerops:
         - .pnpm-store
     run:
       base: nodejs@22
+      os: ubuntu
+      prepareCommands:
+        - sudo apt-get update
+        - sudo apt-get install -y openssl libssl-dev
       ports:
         - port: 3000
           httpSupport: true
