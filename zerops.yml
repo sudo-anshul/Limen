@@ -22,9 +22,6 @@ zerops:
         - package.json
         - pnpm-workspace.yaml
         - pnpm-lock.yaml
-      cache:
-        - node_modules
-        - .pnpm-store
     run:
       base: nodejs@22
       os: ubuntu
